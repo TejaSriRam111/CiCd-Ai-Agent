@@ -1,0 +1,4 @@
+ci: true
+cd: true
+auto_deploy: true
+return_url: true
