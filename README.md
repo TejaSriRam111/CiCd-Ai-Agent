@@ -1,13 +1,10 @@
-# AI CI/CD Generator Agent
+## CiCd-Ai-Agent
 
-This project analyzes a GitHub repository and generates a suitable GitHub Actions CI/CD pipeline automatically.
+An autonomous DevOps AI agent powered by Claude.
 
-## Supported
-- Java (Maven)
-- Node.js
-- Python
-
-## Run
-```bash
-pip install -r requirements.txt
-python main.py
+Features:
+- Repository analysis
+- CI + CD pipeline generation
+- Automatic deployment
+- Live URL output
+- GitHub Actions integration
