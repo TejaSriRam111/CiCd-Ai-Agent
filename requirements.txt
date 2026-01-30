@@ -1,2 +1,5 @@
-GitPython
+
+anthropic
 PyYAML
+gitpython
+requests
