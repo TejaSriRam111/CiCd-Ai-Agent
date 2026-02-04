@@ -1,11 +1,12 @@
 import sys
-from agent.cicd_agent import CICDAgent
-from llm.claude import ask_claude
 
 def main():
-    repo_path = sys.argv[1]
-    agent = CICDAgent(llm=ask_claude)
-    agent.run(repo_path, mode="full-devops")
+    if len(sys.argv) >= 2:
+        repo_path = sys.argv[1]
+    else:
+        repo_path = input("Enter GitHub repo URL or local repo path: ").strip()
+
+    print(f"Running CI/CD AI Agent on: {repo_path}")
 
 if __name__ == "__main__":
     main()
