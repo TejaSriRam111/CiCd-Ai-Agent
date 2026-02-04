@@ -1,5 +1,5 @@
 from agent.cicd_agent import CICDAgent
-from llm.claude import ask_claude
+from llm.ollama_llm import ask_ollama
 from utils.git_utils import resolve_repo
 
 def main():
@@ -12,7 +12,7 @@ def main():
 
     repo_path = resolve_repo(repo_url)
 
-    agent = CICDAgent(llm=ask_claude)
+    agent = CICDAgent(llm=ask_ollama)
     agent.run(repo_path, mode="full-devops")
 
 if __name__ == "__main__":
