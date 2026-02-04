@@ -11,4 +11,4 @@ class CICDAgent:
         workflow_yaml = plan_pipeline(repo_context, self.llm, mode)
         write_workflow(repo_path, workflow_yaml)
 
-        print("✅ CI/CD generated and deployment started")
+        print("CI/CD generated and deployment started")
