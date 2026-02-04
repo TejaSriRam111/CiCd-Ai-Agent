@@ -1,6 +1,6 @@
 from agent.cicd_agent import CICDAgent
 from llm.claude import ask_claude
-from utils.repo_resolver import resolve_repo
+from utils.git_utils import resolve_repo
 
 def main():
     print("🤖 CI/CD AI Agent Started")
