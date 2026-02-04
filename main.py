@@ -1,3 +1,5 @@
+import sys
+sys.stdout.reconfigure(encoding="utf-8")
 from agent.cicd_agent import CICDAgent
 from llm.ollama_llm import ask_ollama
 from utils.git_utils import resolve_repo
