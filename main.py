@@ -1,12 +1,19 @@
-import sys
+from agent.cicd_agent import CICDAgent
+from llm.claude import ask_claude
+from tools.repo_resolver import resolve_repo
 
 def main():
-    if len(sys.argv) >= 2:
-        repo_path = sys.argv[1]
-    else:
-        repo_path = input("Enter GitHub repo URL or local repo path: ").strip()
+    print("🤖 CI/CD AI Agent Started")
+    
+    repo_url = input("👉 Enter Git repository URL: ").strip()
+    if not repo_url:
+        print("❌ Repo URL cannot be empty")
+        return
 
-    print(f"Running CI/CD AI Agent on: {repo_path}")
+    repo_path = resolve_repo(repo_url)
+
+    agent = CICDAgent(llm=ask_claude)
+    agent.run(repo_path, mode="full-devops")
 
 if __name__ == "__main__":
     main()
