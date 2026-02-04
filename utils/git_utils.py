@@ -22,13 +22,13 @@ def resolve_repo(repo_url: str) -> str:
         os.makedirs(CLONE_ROOT, exist_ok=True)
 
         if not os.path.exists(clone_dir):
-            print(f"📥 Cloning repository: {repo_url}")
+            print(f"Cloning repository: {repo_url}")
             subprocess.run(
                 ["git", "clone", repo_url, clone_dir],
                 check=True
             )
         else:
-            print("📂 Repository already cloned")
+            print("Repository already cloned")
 
         return clone_dir
 
