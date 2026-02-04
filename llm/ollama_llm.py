@@ -1,17 +1,15 @@
 import subprocess
 
 def ask_ollama(prompt: str) -> str:
-    """
-    Sends prompt to local Ollama model and returns response
-    """
     result = subprocess.run(
         ["ollama", "run", "mistral"],
-        input=prompt,
-        text=True,
-        capture_output=True
+        input=prompt.encode("utf-8"),   # force UTF-8 input
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
     )
 
     if result.returncode != 0:
-        raise RuntimeError(result.stderr)
+        raise RuntimeError(result.stderr.decode("utf-8", errors="ignore"))
 
-    return result.stdout.strip()
+    # decode safely
+    return result.stdout.decode("utf-8", errors="ignore").strip()
