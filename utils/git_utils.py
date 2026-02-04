@@ -33,3 +33,41 @@ def resolve_repo(repo_url: str) -> str:
         return clone_dir
 
     raise ValueError("Invalid repository URL or path")
+
+
+def commit_and_push(repo_path: str, message: str = "Add AI-generated CI/CD pipeline"):
+    """
+    Commits and pushes the generated CI/CD workflow to the target repository
+    """
+
+    workflow_path = os.path.join(".github", "workflows", "ci-cd.yml")
+
+    try:
+        # Ensure workflow exists before committing
+        if not os.path.exists(os.path.join(repo_path, workflow_path)):
+            print("No CI/CD workflow found to commit")
+            return
+
+        subprocess.run(
+            ["git", "add", workflow_path],
+            cwd=repo_path,
+            check=True
+        )
+
+        subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=repo_path,
+            check=True
+        )
+
+        subprocess.run(
+            ["git", "push"],
+            cwd=repo_path,
+            check=True
+        )
+
+        print("CI/CD workflow committed and pushed successfully")
+
+    except subprocess.CalledProcessError as e:
+        print("Git commit or push failed")
+        print(e)
