@@ -3,11 +3,11 @@ from llm.claude import ask_claude
 from utils.git_utils import resolve_repo
 
 def main():
-    print("🤖 CI/CD AI Agent Started")
+    print("CI/CD AI Agent Started")
 
-    repo_url = input("👉 Enter Git repository URL: ").strip()
+    repo_url = input("Enter Git repository URL: ").strip()
     if not repo_url:
-        print("❌ Repository URL cannot be empty")
+        print("Repository URL cannot be empty")
         return
 
     repo_path = resolve_repo(repo_url)
