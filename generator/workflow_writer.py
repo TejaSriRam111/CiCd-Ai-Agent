@@ -1,35 +1,59 @@
 import os
 
 
-def normalize_github_actions_yaml(yaml_text: str) -> str:
+def ensure_minimum_steps(yaml_text: str) -> str:
     """
-    Fix common LLM mistakes in GitHub Actions YAML
+    Ensure every job has at least one valid step.
+    Fixes empty 'steps:' blocks which break GitHub Actions.
     """
 
-    # Fix invalid short-form trigger
+    lines = yaml_text.splitlines()
+    fixed_lines = []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        fixed_lines.append(line)
+
+        # Detect a steps block
+        if line.strip() == "steps:":
+            # Look ahead to see if next meaningful line is a step
+            j = i + 1
+            has_step = False
+
+            while j < len(lines):
+                next_line = lines[j].strip()
+                if next_line == "" or next_line.startswith("#"):
+                    j += 1
+                    continue
+                if next_line.startswith("-"):
+                    has_step = True
+                break
+
+            # If no step found, inject a default checkout step
+            if not has_step:
+                indent = line[:line.index("s")]
+                fixed_lines.append(f"{indent}  - name: Checkout code")
+                fixed_lines.append(f"{indent}    uses: actions/checkout@v4")
+
+        i += 1
+
+    return "\n".join(fixed_lines)
+
+
+def normalize_github_actions_yaml(yaml_text: str) -> str:
+    """
+    Fix common LLM GitHub Actions mistakes
+    """
+
+    # Fix invalid short trigger
     if "on: [push]" in yaml_text:
         yaml_text = yaml_text.replace(
             "on: [push]",
             "on:\n  push:\n    branches:\n      - main"
         )
 
-    # Remove standalone branches (invalid placement)
-    lines = yaml_text.splitlines()
-    cleaned = []
-    skip_branches_block = False
-
-    for line in lines:
-        if line.strip() == "branches:":
-            skip_branches_block = True
-            continue
-        if skip_branches_block:
-            if line.startswith(" ") or line.startswith("-"):
-                continue
-            else:
-                skip_branches_block = False
-        cleaned.append(line)
-
-    return "\n".join(cleaned)
+    return yaml_text
 
 
 def write_workflow(repo_path, yaml_content):
@@ -38,18 +62,14 @@ def write_workflow(repo_path, yaml_content):
 
     workflow_file = os.path.join(workflow_dir, "ci-cd.yml")
 
-    # ---- SANITIZE LLM OUTPUT ----
+    # --- Strip non-YAML content ---
     lines = yaml_content.splitlines()
-
     cleaned_lines = []
     yaml_started = False
 
     for line in lines:
-        # Skip markdown fences
         if line.strip().startswith("```"):
             continue
-
-        # Start only from first 'name:'
         if not yaml_started:
             if line.strip().startswith("name:"):
                 yaml_started = True
@@ -59,8 +79,9 @@ def write_workflow(repo_path, yaml_content):
 
     cleaned_yaml = "\n".join(cleaned_lines)
 
-    # ---- NORMALIZE GITHUB ACTIONS SYNTAX ----
+    # --- Normalize + self-heal ---
     cleaned_yaml = normalize_github_actions_yaml(cleaned_yaml)
+    cleaned_yaml = ensure_minimum_steps(cleaned_yaml)
 
     with open(workflow_file, "w", encoding="utf-8") as f:
         f.write(cleaned_yaml)
