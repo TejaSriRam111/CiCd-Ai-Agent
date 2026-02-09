@@ -5,21 +5,21 @@ import json
 def analyze_repo(repo_path):
     files = os.listdir(repo_path)
 
-    package_json_path = os.path.join(repo_path, "package.json")
+    package_json = os.path.join(repo_path, "package.json")
+    has_package_json = os.path.exists(package_json)
 
-    has_package_json = os.path.exists(package_json_path)
     has_build_dir = os.path.isdir(os.path.join(repo_path, "build"))
     has_dist_dir = os.path.isdir(os.path.join(repo_path, "dist"))
+
     is_static_site = any(f.endswith(".html") for f in files)
 
     node_version = "20"
     if has_package_json:
         try:
-            with open(package_json_path, "r", encoding="utf-8") as f:
+            with open(package_json, "r", encoding="utf-8") as f:
                 pkg = json.load(f)
-                engines = pkg.get("engines", {})
-                if "node" in engines:
-                    node_version = engines["node"]
+                if "engines" in pkg and "node" in pkg["engines"]:
+                    node_version = pkg["engines"]["node"]
         except Exception:
             pass
 
