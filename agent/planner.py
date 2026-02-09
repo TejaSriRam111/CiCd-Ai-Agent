@@ -1,37 +1,36 @@
 def plan_pipeline(repo_context, llm, mode):
     prompt = f"""
-You generate GitHub Actions workflow YAML files.
+You generate GitHub Actions workflow YAML.
 
-STRICT RULES (MANDATORY – DO NOT VIOLATE):
+STRICT RULES:
 - Output ONLY valid YAML
-- Do NOT include explanations, comments outside YAML, or markdown
-- Do NOT include ```yaml or ```
-- The FIRST line MUST be exactly: name:
-- The workflow MUST be valid for GitHub Actions
-- Use ONLY the trigger format shown below (do not change it)
+- No markdown, no explanations
+- First line MUST be: name:
+- GitHub Actions syntax only
 
-MANDATORY TRIGGER FORMAT (EXACT):
+MANDATORY TRIGGER:
 on:
   push:
     branches:
       - main
 
-DO NOT use:
-- on: [push]
-- on: push
-- branches outside push
+DEPLOYMENT TARGET:
+- Azure Ubuntu VM
+- Nginx web server
+- Use SSH + SCP
+- Copy files to /var/www/html
+- Restart nginx
+- NEVER use npm run deploy
+
+BUILD LOGIC:
+- If package.json exists → npm install && npm run build
+- If build/ exists → deploy build/*
+- If dist/ exists → deploy dist/*
+- Else → deploy repository root
 
 Repository analysis:
 {repo_context}
 
-Generate a CI/CD pipeline with:
-- A build job
-- A deploy job
-- GitHub Actions syntax only
-- Ubuntu runner
-- If deployment is included, add a YAML comment at the end:
-  # DEPLOYMENT_URL: https://example.com
-
-Return ONLY the YAML. NOTHING else.
+Generate CI/CD pipeline now.
 """
     return llm(prompt)
