@@ -4,25 +4,34 @@ You generate GitHub Actions workflow YAML.
 
 ABSOLUTE RULES:
 - Output ONLY valid YAML
-- NO markdown, NO explanations, NO ``` blocks
+- NO explanations
+- NO markdown
+- NO ``` blocks
 - FIRST line MUST be: name:
 - GitHub Actions syntax ONLY
 
-FORBIDDEN:
-- exists(), fileExists()
+FORBIDDEN (NEVER USE):
+- working-dir
+- working_directory
+- continue:
+- exists()
+- if:
+- azure/login
+- appleboy
 - Node.js 14 or lower
 - actions/setup-node@v2 or v3
-- cp to /var/www/html without SSH
-- password-based SSH
 - npm run deploy
 
 MANDATORY:
+- Use actions/checkout@v4
 - Use actions/setup-node@v4
-- Use Node.js 20
-- Use bash for file checks
-- Deploy ONLY via SSH + SCP
-- Use GitHub secrets:
-  AZURE_HOST, AZURE_USER, AZURE_SSH_KEY
+- Node.js version MUST be 20
+- ALL logic inside bash (run: |)
+- Deploy using SSH + SCP ONLY
+- Use GitHub Secrets:
+  AZURE_HOST
+  AZURE_USER
+  AZURE_SSH_KEY
 
 BUILD LOGIC (BASH):
 - If package.json exists → npm install && npm run build || true
@@ -30,8 +39,8 @@ BUILD LOGIC (BASH):
 DEPLOY LOGIC (BASH):
 - If build/ exists → deploy build/*
 - Else if dist/ exists → deploy dist/*
-- Else → deploy repo root
-- Target: /var/www/html
+- Else → deploy repository root
+- Target directory: /var/www/html
 - Restart nginx
 
 TRIGGER:
