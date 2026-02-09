@@ -1,5 +1,18 @@
 import os
 
+FORBIDDEN_PATTERNS = [
+    "working-dir",
+    "working_directory",
+    "continue:",
+    "azure/login",
+    "appleboy",
+    "exists(",
+    "if:",
+    "node-version: 14",
+    "actions/setup-node@v2",
+    "actions/setup-node@v3"
+]
+
 
 def strip_non_yaml(text):
     lines = text.splitlines()
@@ -47,7 +60,6 @@ def ensure_steps(yaml_text):
         if line.strip() == "steps:":
             j = i + 1
             has_step = False
-
             while j < len(lines):
                 nxt = lines[j].strip()
                 if nxt == "" or nxt.startswith("#"):
@@ -67,10 +79,15 @@ def ensure_steps(yaml_text):
 
 
 def validate_yaml(yaml_text):
-    forbidden = ["exists(", "node-version: 14", "/var/www/html"]
-    for f in forbidden:
-        if f in yaml_text and "scp" not in yaml_text:
-            raise ValueError(f"Invalid workflow detected: {f}")
+    for bad in FORBIDDEN_PATTERNS:
+        if bad in yaml_text:
+            raise ValueError(f"Invalid GitHub Actions syntax detected: {bad}")
+
+    if not yaml_text.strip().startswith("name:"):
+        raise ValueError("Workflow must start with 'name:'")
+
+    if "run:" not in yaml_text:
+        raise ValueError("Workflow must contain run steps")
 
 
 def write_workflow(repo_path, yaml_content):
@@ -83,9 +100,6 @@ def write_workflow(repo_path, yaml_content):
     yaml_text = normalize_yaml(yaml_text)
     yaml_text = ensure_steps(yaml_text)
     validate_yaml(yaml_text)
-
-    if not yaml_text.strip().startswith("name:"):
-        raise ValueError("Workflow must start with name:")
 
     with open(workflow_file, "w", encoding="utf-8", newline="\n") as f:
         f.write(yaml_text)
