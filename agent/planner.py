@@ -1,36 +1,52 @@
 def plan_pipeline(repo_context, llm, mode):
     prompt = f"""
-You generate GitHub Actions workflow YAML.
+You are an AI that generates GitHub Actions workflow files.
 
-STRICT RULES:
+ABSOLUTE RULES (NON-NEGOTIABLE):
 - Output ONLY valid YAML
-- No markdown, no explanations
-- First line MUST be: name:
-- GitHub Actions syntax only
+- Do NOT include explanations
+- Do NOT include markdown
+- Do NOT include ``` or ```yaml
+- The FIRST line MUST start with: name:
+- The output must be directly usable as .github/workflows/ci-cd.yml
 
-MANDATORY TRIGGER:
+TRIGGER:
 on:
   push:
     branches:
       - main
 
-DEPLOYMENT TARGET:
-- Azure Ubuntu VM
-- Nginx web server
-- Use SSH + SCP
+GLOBAL REQUIREMENTS:
+- Use ubuntu-latest runners
+- Always install Node.js 20 using actions/setup-node@v4 BEFORE any npm command
+- Never hardcode IPs, usernames, or SSH keys
+- Use GitHub Secrets: AZURE_HOST, AZURE_USER, AZURE_SSH_KEY
+
+BUILD RULES:
+- If package.json exists:
+    - run npm install
+    - run npm run build (ignore failure if script does not exist)
+- Do NOT use npm run deploy
+
+DEPLOYMENT RULES:
+- Target: Azure Ubuntu VM
+- Web server: Nginx
+- Use SSH and SCP only
 - Copy files to /var/www/html
-- Restart nginx
-- NEVER use npm run deploy
-
-BUILD LOGIC:
-- If package.json exists → npm install && npm run build
 - If build/ exists → deploy build/*
-- If dist/ exists → deploy dist/*
+- Else if dist/ exists → deploy dist/*
 - Else → deploy repository root
+- Restart nginx after deployment
 
-Repository analysis:
+REPOSITORY ANALYSIS (for context only):
 {repo_context}
 
-Generate CI/CD pipeline now.
+Generate a COMPLETE CI/CD workflow with:
+- build job
+- deploy job
+- proper job dependencies
+- valid GitHub Actions syntax
+
+Return ONLY the YAML. NOTHING ELSE.
 """
     return llm(prompt)
