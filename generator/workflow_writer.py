@@ -1,105 +1,61 @@
 import os
 
-FORBIDDEN_PATTERNS = [
-    "working-dir",
-    "working_directory",
-    "continue:",
-    "azure/login",
-    "appleboy",
-    "exists(",
-    "if:",
-    "node-version: 14",
-    "actions/setup-node@v2",
-    "actions/setup-node@v3"
-]
 
-
-def strip_non_yaml(text):
-    lines = text.splitlines()
-    cleaned = []
-    started = False
-
-    for line in lines:
-        if line.strip().startswith("```"):
-            continue
-        if not started:
-            if line.strip().startswith("name:"):
-                started = True
-                cleaned.append(line)
-        else:
-            cleaned.append(line)
-
-    return "\n".join(cleaned)
-
-
-def normalize_yaml(yaml_text):
-    if "on: [push]" in yaml_text:
-        yaml_text = yaml_text.replace(
-            "on: [push]",
-            "on:\n  push:\n    branches:\n      - main"
-        )
-
-    if "on:" not in yaml_text:
-        yaml_text = yaml_text.replace(
-            "name:",
-            "name:\n\non:\n  push:\n    branches:\n      - main\n"
-        )
-
-    return yaml_text
-
-
-def ensure_steps(yaml_text):
-    lines = yaml_text.splitlines()
-    fixed = []
-
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        fixed.append(line)
-
-        if line.strip() == "steps:":
-            j = i + 1
-            has_step = False
-            while j < len(lines):
-                nxt = lines[j].strip()
-                if nxt == "" or nxt.startswith("#"):
-                    j += 1
-                    continue
-                if nxt.startswith("-"):
-                    has_step = True
-                break
-
-            if not has_step:
-                indent = line[:len(line) - len(line.lstrip())]
-                fixed.append(f"{indent}- uses: actions/checkout@v4")
-
-        i += 1
-
-    return "\n".join(fixed)
-
-
-def validate_yaml(yaml_text):
-    for bad in FORBIDDEN_PATTERNS:
-        if bad in yaml_text:
-            raise ValueError(f"Invalid GitHub Actions syntax detected: {bad}")
-
-    if not yaml_text.strip().startswith("name:"):
-        raise ValueError("Workflow must start with 'name:'")
-
-    if "run:" not in yaml_text:
-        raise ValueError("Workflow must contain run steps")
-
-
-def write_workflow(repo_path, yaml_content):
+def write_workflow(repo_path, plan):
     workflow_dir = os.path.join(repo_path, ".github", "workflows")
     os.makedirs(workflow_dir, exist_ok=True)
 
     workflow_file = os.path.join(workflow_dir, "ci-cd.yml")
 
-    yaml_text = strip_non_yaml(yaml_content)
-    yaml_text = normalize_yaml(yaml_text)
-    yaml_text = ensure_steps(yaml_text)
-    validate_yaml(yaml_text)
+    deploy_logic = ""
+    if plan["deploy_dir"] == "build":
+        deploy_logic = "scp -r build/*"
+    elif plan["deploy_dir"] == "dist":
+        deploy_logic = "scp -r dist/*"
+    else:
+        deploy_logic = "scp -r ./*"
+
+    workflow_yaml = f"""name: Azure VM Nginx Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build project (if applicable)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+            npm run build || echo "No build script"
+          fi
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{{{ secrets.AZURE_SSH_KEY }}}}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{{{ secrets.AZURE_HOST }}}} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Azure VM
+        run: |
+          {deploy_logic} ${{{{ secrets.AZURE_USER }}}}@${{{{ secrets.AZURE_HOST }}}}:/var/www/html/
+
+      - name: Restart nginx
+        run: |
+          ssh ${{{{ secrets.AZURE_USER }}}}@${{{{ secrets.AZURE_HOST }}}} "sudo systemctl restart nginx"
+"""
 
     with open(workflow_file, "w", encoding="utf-8", newline="\n") as f:
-        f.write(yaml_text)
+        f.write(workflow_yaml)
