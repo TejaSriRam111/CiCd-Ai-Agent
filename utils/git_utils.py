@@ -4,16 +4,17 @@ from urllib.parse import urlparse
 
 CLONE_ROOT = "cloned_repos"
 
+
 def resolve_repo(repo_url: str) -> str:
     """
     Takes a git repo URL or local path and returns a local repo path
     """
 
-    # If local path already exists
+    # Local path
     if os.path.exists(repo_url):
         return repo_url
 
-    # If Git URL
+    # Git URL
     if repo_url.startswith("http"):
         parsed = urlparse(repo_url)
         repo_name = parsed.path.strip("/").split("/")[-1].replace(".git", "")
@@ -35,39 +36,53 @@ def resolve_repo(repo_url: str) -> str:
     raise ValueError("Invalid repository URL or path")
 
 
-def commit_and_push(repo_path: str, message: str = "Add AI-generated CI/CD pipeline"):
+def commit_and_push(
+    repo_path: str,
+    message: str = "Add AI-generated CI/CD pipeline"
+):
     """
     Commits and pushes the generated CI/CD workflow to the target repository
     """
 
     workflow_path = os.path.join(".github", "workflows", "ci-cd.yml")
 
+    if not os.path.isdir(os.path.join(repo_path, ".git")):
+        print("Not a git repository, skipping commit")
+        return
+
+    full_workflow_path = os.path.join(repo_path, workflow_path)
+
+    if not os.path.exists(full_workflow_path):
+        print("No CI/CD workflow found to commit")
+        return
+
     try:
-        # Ensure workflow exists before committing
-        if not os.path.exists(os.path.join(repo_path, workflow_path)):
-            print("No CI/CD workflow found to commit")
+        def run(cmd):
+            subprocess.run(cmd, cwd=repo_path, check=True)
+
+        # Ensure git identity exists
+        run(["git", "config", "user.email", "ai-agent@github.com"])
+        run(["git", "config", "user.name", "CI/CD AI Agent"])
+
+        # Stage workflow
+        run(["git", "add", workflow_path])
+
+        # Check if there are changes
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=repo_path
+        ).decode().strip()
+
+        if not status:
+            print("No changes to commit")
             return
 
-        subprocess.run(
-            ["git", "add", workflow_path],
-            cwd=repo_path,
-            check=True
-        )
-
-        subprocess.run(
-            ["git", "commit", "-m", message],
-            cwd=repo_path,
-            check=True
-        )
-
-        subprocess.run(
-            ["git", "push"],
-            cwd=repo_path,
-            check=True
-        )
+        # Commit and push
+        run(["git", "commit", "-m", message])
+        run(["git", "push"])
 
         print("CI/CD workflow committed and pushed successfully")
 
     except subprocess.CalledProcessError as e:
         print("Git commit or push failed")
-        print(e)
+        raise e
