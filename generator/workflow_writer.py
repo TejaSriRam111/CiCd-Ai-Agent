@@ -15,9 +15,7 @@ def ensure_minimum_steps(yaml_text: str) -> str:
         line = lines[i]
         fixed_lines.append(line)
 
-        # Detect a steps block
         if line.strip() == "steps:":
-            # Look ahead to see if next meaningful line is a step
             j = i + 1
             has_step = False
 
@@ -30,11 +28,9 @@ def ensure_minimum_steps(yaml_text: str) -> str:
                     has_step = True
                 break
 
-            # If no step found, inject a default checkout step
             if not has_step:
-                indent = line[:line.index("s")]
-                fixed_lines.append(f"{indent}  - name: Checkout code")
-                fixed_lines.append(f"{indent}    uses: actions/checkout@v4")
+                indent = line[:len(line) - len(line.lstrip())]
+                fixed_lines.append(f"{indent}- uses: actions/checkout@v4")
 
         i += 1
 
@@ -43,7 +39,7 @@ def ensure_minimum_steps(yaml_text: str) -> str:
 
 def normalize_github_actions_yaml(yaml_text: str) -> str:
     """
-    Fix common LLM GitHub Actions mistakes
+    Fix common LLM GitHub Actions mistakes.
     """
 
     # Fix invalid short trigger
@@ -53,7 +49,37 @@ def normalize_github_actions_yaml(yaml_text: str) -> str:
             "on:\n  push:\n    branches:\n      - main"
         )
 
+    # Ensure 'on:' exists
+    if "on:" not in yaml_text:
+        yaml_text = yaml_text.replace(
+            "name:",
+            "name:\n\non:\n  push:\n    branches:\n      - main\n"
+        )
+
     return yaml_text
+
+
+def strip_non_yaml_content(yaml_content: str) -> str:
+    """
+    Strip markdown, explanations, and anything before the YAML starts.
+    """
+
+    lines = yaml_content.splitlines()
+    cleaned_lines = []
+    yaml_started = False
+
+    for line in lines:
+        if line.strip().startswith("```"):
+            continue
+
+        if not yaml_started:
+            if line.strip().startswith("name:"):
+                yaml_started = True
+                cleaned_lines.append(line)
+        else:
+            cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines)
 
 
 def write_workflow(repo_path, yaml_content):
@@ -62,26 +88,18 @@ def write_workflow(repo_path, yaml_content):
 
     workflow_file = os.path.join(workflow_dir, "ci-cd.yml")
 
-    # --- Strip non-YAML content ---
-    lines = yaml_content.splitlines()
-    cleaned_lines = []
-    yaml_started = False
+    # 1️⃣ Strip non-YAML junk
+    cleaned_yaml = strip_non_yaml_content(yaml_content)
 
-    for line in lines:
-        if line.strip().startswith("```"):
-            continue
-        if not yaml_started:
-            if line.strip().startswith("name:"):
-                yaml_started = True
-                cleaned_lines.append(line)
-        else:
-            cleaned_lines.append(line)
-
-    cleaned_yaml = "\n".join(cleaned_lines)
-
-    # --- Normalize + self-heal ---
+    # 2️⃣ Normalize known GitHub Actions issues
     cleaned_yaml = normalize_github_actions_yaml(cleaned_yaml)
+
+    # 3️⃣ Ensure no empty steps blocks
     cleaned_yaml = ensure_minimum_steps(cleaned_yaml)
 
-    with open(workflow_file, "w", encoding="utf-8") as f:
+    # 4️⃣ Final safety check
+    if not cleaned_yaml.strip().startswith("name:"):
+        raise ValueError("Invalid workflow: YAML does not start with 'name:'")
+
+    with open(workflow_file, "w", encoding="utf-8", newline="\n") as f:
         f.write(cleaned_yaml)
