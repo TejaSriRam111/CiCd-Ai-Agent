@@ -1,16 +1,50 @@
 def plan_pipeline(repo_context, llm, mode):
-    """
-    LLM is ONLY used to decide build output directory.
-    Workflow structure is fixed and safe.
-    """
+    prompt = f"""
+name: Azure VM Nginx Deployment
 
-    if repo_context.get("has_build_dir"):
-        deploy_dir = "build"
-    elif repo_context.get("has_dist_dir"):
-        deploy_dir = "dist"
-    else:
-        deploy_dir = "root"
+on:
+  push:
+    branches:
+      - main
 
-    return {
-        "deploy_dir": deploy_dir
-    }
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build project (if applicable)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+            npm run build
+          fi
+
+      - name: Upload files to Azure VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{{{ secrets.AZURE_HOST }}}}
+          username: ${{{{ secrets.AZURE_USER }}}}
+          key: ${{{{ secrets.AZURE_SSH_KEY }}}}
+          source: |
+            build/*
+            dist/*
+            *.html
+          target: /var/www/html
+          strip_components: 1
+
+      - name: Restart nginx
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{{{ secrets.AZURE_HOST }}}}
+          username: ${{{{ secrets.AZURE_USER }}}}
+          key: ${{{{ secrets.AZURE_SSH_KEY }}}}
+          script: sudo systemctl restart nginx
+"""
+    return prompt
