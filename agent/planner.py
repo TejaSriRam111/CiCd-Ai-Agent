@@ -25,7 +25,7 @@ Return ONLY valid JSON. Do not explain anything.
     try:
         workflow_plan = json.loads(response)
     except json.JSONDecodeError:
-        print("❌ LLM did not return valid JSON.")
+        print("LLM did not return valid JSON.")
         print("LLM Response:")
         print(response)
         raise ValueError("Invalid JSON returned from LLM")
