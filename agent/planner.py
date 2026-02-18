@@ -1,15 +1,28 @@
 import json
+import re
+
+
+def extract_json(text: str):
+    """
+    Extract first JSON object from LLM response safely.
+    """
+    json_match = re.search(r"\{.*\}", text, re.DOTALL)
+    if not json_match:
+        return None
+
+    try:
+        return json.loads(json_match.group())
+    except json.JSONDecodeError:
+        return None
+
 
 def plan_pipeline(repo_context, llm, mode="full-devops"):
     prompt = f"""
 You are a DevOps expert.
 
-Analyze the following repository context and return ONLY a valid JSON object.
+Analyze the repository context and return ONLY valid JSON.
 
-Repository context:
-{repo_context}
-
-Return JSON in this exact format:
+Required format:
 
 {{
   "language": "string",
@@ -17,17 +30,27 @@ Return JSON in this exact format:
   "deploy_dir": "string"
 }}
 
-Return ONLY valid JSON. Do not explain anything.
+Do not return code.
+Do not explain.
+Return ONLY JSON.
 """
 
     response = llm(prompt)
 
-    try:
-        workflow_plan = json.loads(response)
-    except json.JSONDecodeError:
-        print("LLM did not return valid JSON.")
-        print("LLM Response:")
+    workflow_plan = extract_json(response)
+
+    if not workflow_plan:
+        print("⚠ LLM returned non-JSON response.")
+        print("Raw LLM Output:")
         print(response)
-        raise ValueError("Invalid JSON returned from LLM")
+
+        # Fallback safe default
+        workflow_plan = {
+            "language": "unknown",
+            "build_command": "echo Build step",
+            "deploy_dir": "build"
+        }
+
+        print("⚠ Using fallback workflow plan.")
 
     return workflow_plan
