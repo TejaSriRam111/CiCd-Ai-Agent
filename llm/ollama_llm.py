@@ -2,7 +2,7 @@ import subprocess
 
 def ask_ollama(prompt: str) -> str:
     result = subprocess.run(
-        ["ollama", "run", "mistral"],
+        ["ollama", "run", "phi"],
         input=prompt.encode("utf-8"),   # force UTF-8 input
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
