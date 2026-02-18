@@ -1,50 +1,33 @@
-def plan_pipeline(repo_context, llm, mode):
+import json
+
+def plan_pipeline(repo_context, llm, mode="full-devops"):
     prompt = f"""
-name: Azure VM Nginx Deployment
+You are a DevOps expert.
 
-on:
-  push:
-    branches:
-      - main
+Analyze the following repository context and return ONLY a valid JSON object.
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+Repository context:
+{repo_context}
 
-    steps:
-      - uses: actions/checkout@v4
+Return JSON in this exact format:
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+{{
+  "language": "string",
+  "build_command": "string",
+  "deploy_dir": "string"
+}}
 
-      - name: Build project (if applicable)
-        run: |
-          if [ -f package.json ]; then
-            npm install
-            npm run build
-          fi
-
-      - name: Upload files to Azure VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{{{ secrets.AZURE_HOST }}}}
-          username: ${{{{ secrets.AZURE_USER }}}}
-          key: ${{{{ secrets.AZURE_SSH_KEY }}}}
-          source: |
-            build/*
-            dist/*
-            *.html
-          target: /var/www/html
-          strip_components: 1
-
-      - name: Restart nginx
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{{{ secrets.AZURE_HOST }}}}
-          username: ${{{{ secrets.AZURE_USER }}}}
-          key: ${{{{ secrets.AZURE_SSH_KEY }}}}
-          script: sudo systemctl restart nginx
+Return ONLY valid JSON. Do not explain anything.
 """
-    return prompt
+
+    response = llm(prompt)
+
+    try:
+        workflow_plan = json.loads(response)
+    except json.JSONDecodeError:
+        print("❌ LLM did not return valid JSON.")
+        print("LLM Response:")
+        print(response)
+        raise ValueError("Invalid JSON returned from LLM")
+
+    return workflow_plan
